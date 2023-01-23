@@ -1,47 +1,84 @@
-const express = require('express')
+const express = require("express");
+const bodyParser = require('body-parser');
 const nodemailer = require('nodemailer');
-const app = express()
-const port = 5000
+const app = express();
+const cors = require('cors');
+app.use(cors({
+    origin: 'http://localhost:4200'
+}));
+app.use(cors({
+    methods: ['POST']
+}));
+// Parse incoming requests data (https://github.com/expressjs/body-parser)
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+const route = express.Router();
 
-// Fonction pour envoyer le message
-function sendEmail() {
-    // Configuration du transporteur de mail
+const port = process.env.PORT || 5000;
 
-    return new Promise((resolve, reject) => {
-
-
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: 'djlexvolution@gmail.com',
-                pass: 'pznqzbmjdeefzaar'
-            }
-        });
-
-        // Préparer les options de l'email
-        const mail_configs = {
-            from: 'myemail',
-            to: 'djlexvolution@gmail.com',
-            subject: `New message from Lexvolution`,
-            text: "Helllo Ceci Est un test nodemailer Je t'aime bae grincheuze"
-        };
-        transporter.sendMail(mail_configs, function(error, info) {
-            if (error) {
-                return reject({ mesage: `An error has occured` })
-            }
-            return resolve({ message: "Email sent succesfuly" })
-        })
-    })
-}
-
-app.get('/', (req, res) => {
-
-    sendEmail()
-        .then(response => res.send(response.message))
-        .catch(error => res.status(500).send(error.message))
-})
-
+app.use('/v1', route);
 
 app.listen(port, () => {
-    console.log(`nodemailer is lkistening at http://localhost:${port}`)
-})
+    console.log(`Server listening on port ${port}`);
+});
+
+
+const transporter = nodemailer.createTransport({
+    port: 465,
+    host: "smtp.gmail.com",
+    auth: {
+        user: 'djlexvolution@gmail.com',
+        pass: 'pznqzbmjdeefzaar',
+    },
+    secure: true, // upgrades later with STARTTLS -- change this based on the PORT
+});
+
+route.post('/text-mail', cors(), (req, res) => {
+    const { from, nom, email, text } = req.body;
+    console.log("from ", from);
+    console.log("nom ", nom);
+    console.log("text ", text);
+    const mailData = {
+        from: 'djlexvolution@gmail.com',
+        to: 'djlexvolution@gmail.com',
+        subject: 'Mail Ateliers cosmétiques',
+        text: text,
+        html: '<b>Hey there! </b><br>' + text + '<br/>',
+    };
+
+    transporter.sendMail(mailData, (error, info) => {
+        if (error) {
+            return console.log(error);
+        }
+        res.status(200).send({ message: "Mail send", message_id: info.messageId });
+    });
+});
+
+
+
+route.post('/attachments-mail', (req, res) => {
+    const { to, subject, text } = req.body;
+    const mailData = {
+        from: 'talcosmetiques@gmail.com',
+        to: to,
+        subject: subject,
+        text: text,
+        html: '<b>Hey there! </b><br> This is our first message sent with Nodemailer<br/>',
+        attachments: [{ // file on disk as an attachment
+                filename: 'nodemailer.png',
+                path: 'nodemailer.png'
+            },
+            { // file on disk as an attachment
+                filename: 'text_file.txt',
+                path: 'text_file.txt'
+            }
+        ]
+    };
+
+    transporter.sendMail(mailData, (error, info) => {
+        if (error) {
+            return console.log(error);
+        }
+        res.status(200).send({ message: "Mail send", message_id: info.messageId });
+    });
+});
